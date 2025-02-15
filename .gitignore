@@ -1,0 +1,18 @@
+# macOS system files
+.DS_Store
+
+# Virtual environment & dependencies
+venv/
+env/
+*.pyc
+__pycache__/
+
+# Environment variables (API keys, secrets)
+.env
+
+# IDE-specific files
+.idea/
+.vscode/
+
+# Pyenv version file
+.python-version
