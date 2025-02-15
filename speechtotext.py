@@ -4,7 +4,7 @@ from langchain.chains import LLMChain
 from langchain_openai import OpenAI
 from langchain.prompts import PromptTemplate
 import openai
-from elevenlabs import play, save, generate
+from elevenlabs import play, save
 import os 
 load_dotenv()
 
@@ -59,7 +59,7 @@ def navigation_assistant():
     safety_chain = LLMChain(llm=llm, prompt=prompt_template)
     guidance = safety_chain.invoke({"sound_input": sound_description})
 
-    speak_response(guidance['text'], voice="Adam")
+    speak_response(guidance['text'])
     return guidance['text'] 
 
 advice = navigation_assistant()
