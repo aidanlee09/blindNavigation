@@ -19,6 +19,8 @@ pip install fastapi uvicorn opencv-python numpy pillow
 pip install langchain langchain-openai openai
 pip install elevenlabs
 pip install python-dotenv
+pip install python-multipart
+pip install pillow pillow-heif
 ```
 
 #### VERIFY (in terminal)
