@@ -26,6 +26,7 @@ pip install tensorflow tensorflow-hub
 pip install tensorflow-macos tensorflow-metal tensorflow-hub
 pip install scipy
 pip install timm
+pip install --upgrade langchain langchain-community langchain-openai
 ```
 
 #### VERIFY (in terminal)

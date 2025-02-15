@@ -13,11 +13,10 @@ async def upload_image(file: UploadFile = File(...)):
     result = query_manager.save_image(file_bytes, file.content_type)
     return result
 
-@app.post("/describe-image/")
-async def describe_image(image_id: str):
-    gpt_response = query_manager.ask_gpt_about_image(image_id)
-    query_manager.text_to_speech(gpt_response)
-    return {"gpt_response": gpt_response}
+@app.post("/detect-image/")
+async def detect_image(image_id: str):
+    json = query_manager.default_ask(image_id)
+    return {"json": json}
 
 @app.post("/detect-depth/")
 async def detect_depth(image_id: str):

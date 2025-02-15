@@ -1,6 +1,7 @@
+import base64
+
 import torch
 import io
-import openai
 import uuid
 import os
 from PIL import Image
@@ -9,11 +10,16 @@ from dotenv import load_dotenv
 import numpy as np
 from elevenlabs import Voice, VoiceSettings, play
 from elevenlabs.client import ElevenLabs
+from llm_converse import converse
+import json
+from image_processor import ImageProcessor
 
 load_dotenv()
 
 class QueryManager:
     def __init__(self, model):
+        self.image_processor = ImageProcessor()
+        self.reset_memory()
         self.conversation_history = []  # Stores chat history
         self.image_history = {}         # Stores images as {image_id: PIL Image}
         self.depth_history = {}         # Stores depth recognition results
@@ -22,28 +28,49 @@ class QueryManager:
         self.model = model              # PyTorch depth recognition model
         self.device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
+    def reset_memory(self):
+        """Clears all stored data in QueryManager."""
+        self.conversation_history = []  # Reset chat history
+        self.image_history = {}  # Reset stored images
+        self.depth_history = {}  # Reset depth recognition results
+        self.sound_history = []  # Reset detected sounds
+        self.gpt_history = {}  # Reset stored GPT responses
+
     def save_image(self, file_bytes, content_type):
-        """Saves an image to memory and converts HEIC if needed."""
+        self.reset_memory()
+
         image_id = str(uuid.uuid4())  # Generate a unique ID
 
         try:
-            if content_type in ["image/heic", "image/heif"]:
-                # Convert HEIC to PNG
-                heif_image = pillow_heif.open_heif(io.BytesIO(file_bytes))
-                image = Image.frombytes(
-                    heif_image.mode, heif_image.size, heif_image.data, "raw", heif_image.mode
-                )
-                image_format = "PNG"
-            else:
-                # Handle regular images (JPEG, PNG, etc.)
-                image = Image.open(io.BytesIO(file_bytes))
-                image_format = image.format
+            processed_image = self.image_processor.save_image(file_bytes, content_type, image_id)
 
-            self.image_history[image_id] = image
-            return {"image_id": image_id, "original_format": content_type, "converted_format": image_format}
+            if "error" in processed_image:
+                return processed_image  # Return error if processing fails
+
+            # Store the optimized base64 image
+            self.image_history[image_id] = processed_image["base64_image"]
+
+            return processed_image
 
         except Exception as e:
             return {"error": f"Failed to process image: {str(e)}"}
+
+    def default_ask(self, image_id):
+        if image_id not in self.image_history:
+            return {"error": "Image ID not found."}
+
+        image = self.image_history.get(image_id)
+
+        prompt_path = "prompts/obstacle.txt"
+
+        if not os.path.exists(prompt_path):
+            raise FileNotFoundError(f"Prompt file not found: {prompt_path}")
+
+        with open(prompt_path, "r", encoding="utf-8") as file:
+            prompt = file.read().strip()
+
+        json = converse(prompt, image, "gpt-4o")
+        return json
 
     def detect_objects_and_estimate_depth(self, image_id):
         """Processes an image to detect objects and estimate depth."""
@@ -63,27 +90,6 @@ class QueryManager:
 
         return {"depth_map": depth_data}
 
-    def ask_gpt_about_image(self, image_id):
-        """Uses GPT-4 to describe the scene based on an uploaded image."""
-        if image_id not in self.image_history:
-            return {"error": "Image ID not found."}
-
-        prompt = "Describe the surroundings and objects in the uploaded image."
-        return self.ask_gpt(prompt)
-
-    # def ask_gpt(self, prompt):
-    #     """Sends a prompt to GPT-4 and returns the response."""
-    #     openai_api_key = os.getenv("OPENAI_API_KEY")
-    #     response = openai.ChatCompletion.create(
-    #         model="gpt-4",
-    #         messages=[{"role": "system", "content": "You are assisting a visually impaired user."}]
-    #                   + self.conversation_history
-    #                   + [{"role": "user", "content": prompt}],
-    #         api_key=openai_api_key
-    #     )
-    #     reply = response["choices"][0]["message"]["content"]
-    #     self.conversation_history.append({"role": "assistant", "content": reply})
-    #     return reply
 
     def text_to_speech(self, text):
         """Converts GPT's response into speech using ElevenLabs."""
