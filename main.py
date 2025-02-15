@@ -1,44 +1,35 @@
-from fastapi import FastAPI, File, UploadFile
-from PIL import Image
-import pillow_heif
-import io
+from fastapi import FastAPI, UploadFile, File
+import torch
+from query_manager import QueryManager
 
 app = FastAPI()
 
-@app.get("/")
-async def home():
-    return {"message": "🚀 FastAPI server is running!"}
+depth_model = torch.hub.load("intel-isl/MiDaS", "MiDaS_small")
+query_manager = QueryManager(depth_model)
 
-
-@app.post("/process-image/")
-async def process_image(file: UploadFile = File(...)):
+@app.post("/upload-image/")
+async def upload_image(file: UploadFile = File(...)):
     file_bytes = await file.read()
+    result = query_manager.save_image(file_bytes, file.content_type)
+    return result
 
-    # Detect file format
-    if file.content_type in ["image/heic", "image/heif"]:
-        try:
-            # Convert HEIC to PIL Image
-            heif_image = pillow_heif.open_heif(io.BytesIO(file_bytes))
-            image = Image.frombytes(
-                heif_image.mode, heif_image.size, heif_image.data, "raw", heif_image.mode
-            )
-            image_format = "PNG"  # Convert to PNG
-        except Exception as e:
-            return {"error": f"Failed to process HEIC file: {str(e)}"}
+@app.post("/describe-image/")
+async def describe_image(image_id: str):
+    gpt_response = query_manager.ask_gpt_about_image(image_id)
+    query_manager.text_to_speech(gpt_response)
+    return {"gpt_response": gpt_response}
 
-    else:
-        try:
-            # Handle regular image formats
-            image = Image.open(io.BytesIO(file_bytes))
-            image_format = image.format
-        except Exception as e:
-            return {"error": f"Failed to process image: {str(e)}"}
+@app.post("/detect-depth/")
+async def detect_depth(image_id: str):
+    depth_result = query_manager.detect_objects_and_estimate_depth(image_id)
+    return depth_result
 
-    return {
-        "filename": file.filename,
-        "original_format": file.content_type,
-        "converted_format": image_format
-    }
+# @app.post("/follow-up/")
+# async def follow_up(question: str):
+#     followup_response = query_manager.ask_gpt(question)
+#     query_manager.text_to_speech(followup_response)
+#     return {"followup_response": followup_response}
+
 
 if __name__ == "__main__":
     import uvicorn

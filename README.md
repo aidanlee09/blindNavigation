@@ -21,6 +21,11 @@ pip install elevenlabs
 pip install python-dotenv
 pip install python-multipart
 pip install pillow pillow-heif
+pip install sounddevice
+pip install tensorflow tensorflow-hub
+pip install tensorflow-macos tensorflow-metal tensorflow-hub
+pip install scipy
+pip install timm
 ```
 
 #### VERIFY (in terminal)
