@@ -104,8 +104,6 @@ class QueryManager:
         if not check:
             raise ValueError(f"Invalid JSON format: {msg}")
 
-        return data['description']
-
         if data['obstacle'] == 0:
             return data['description']
 
@@ -113,5 +111,6 @@ class QueryManager:
             compressed_image = self.compressed_image_history[image_id]
             image = np.array(compressed_image)
             distance_to_obstacle = depth_calculation(image)
-
-
+            obstacle_description = (f"{data['description']} Based on our calculations, the obstacle is approximately {distance_to_obstacle:.1f} meters away from you. "
+                                    f"Please proceed with as much caution as possible.")
+            return obstacle_description
