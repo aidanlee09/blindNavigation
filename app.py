@@ -1,6 +1,8 @@
-from fastapi import FastAPI, Body, UploadFile, File
-import torch
+from fastapi import FastAPI, UploadFile, File
 from query_manager import QueryManager
+from tss import text_to_speech
+from fastapi import HTTPException
+from starlette.responses import FileResponse
 
 app = FastAPI()
 
@@ -18,7 +20,13 @@ async def upload_image(file: UploadFile = File(...)):
 @app.post("/detect-image/")
 async def detect_image(image_id: str):
     response = query_manager.default_ask(image_id)
-    return {"description": response}
+    text_to_speech(response)
+    filepath = f"audio/output.mp3"
+    try:
+        return FileResponse(filepath, media_type="audio/mpeg", filename=filepath)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found")
+    # return {"description": response}
 
 # @app.post("/follow-up/")
 # async def follow_up(question: str):
