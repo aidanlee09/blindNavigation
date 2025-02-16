@@ -2,7 +2,7 @@
 FROM python:3.11
 
 # Set working directory
-WORKDIR /app
+WORKDIR
 
 # Copy dependencies file and install dependencies
 COPY requirements.txt .
