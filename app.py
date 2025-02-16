@@ -3,6 +3,16 @@ from query_manager import QueryManager
 from tss import text_to_speech
 from fastapi import HTTPException
 from starlette.responses import FileResponse
+import firebase_admin
+from firebase_admin import credentials, storage
+
+# # Initialize Firebase Admin SDK
+# cred = credentials.Certificate("blind-navigation-8fbmw1-firebase-adminsdk-fbsvc-92f43ecbbb.json")
+# firebase_admin.initialize_app(cred, {"storageBucket": "blind-navigation-8fbmw1.appspot.com"})
+#
+# def get_storage_bucket():
+#     return storage.bucket()
+#
 
 app = FastAPI()
 
@@ -16,6 +26,12 @@ async def upload_image(file: UploadFile = File(...)):
     file_bytes = await file.read()
     result = query_manager.save_image(file_bytes, file.content_type)
     return result
+
+# @app.post("/retrieve-image/")
+# async def upload_image():
+#     file_bytes = await file.read()
+#     result = query_manager.save_image(file_bytes, file.content_type)
+#     return result
 
 @app.post("/detect-image/")
 async def detect_image(image_id: str):

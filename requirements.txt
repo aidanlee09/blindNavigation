@@ -21,4 +21,5 @@ matplotlib
 opencv-python
 torchvision
 langchain-community
+firebase-admin
 
