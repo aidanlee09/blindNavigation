@@ -1,113 +1,74 @@
-from dotenv import load_dotenv
-from elevenlabs.client import ElevenLabs
-from langchain.chains import LLMChain 
-from langchain_openai import OpenAI
-from langchain.prompts import PromptTemplate
 import sounddevice as sd
-import numpy as np
-import tensorflow_hub as hub
-from elevenlabs import play
+import wavio
+import tempfile
 import os
-load_dotenv()
+from openai import OpenAI
+from openai import APIConnectionError, APIError
 
-SAMPLE_RATE = 16000  # yAMNet requires 16kHz
-RECORD_DURATION = 3  # seconds per analysis window
-YAMNET_MODEL = 'https://tfhub.dev/google/yamnet/1'
-yamnet_model = hub.load(YAMNET_MODEL)
-class_map_path = yamnet_model.class_map_path().numpy().decode('utf-8')
-class_names = []
-with open(class_map_path) as csv_file:
-    import csv
-    reader = csv.reader(csv_file)
-    class_names = [row[2] for row in reader]  # index 2 contains actual class names
-os.environ["ELEVENLABS_API_KEY"] = "voice-key"
-os.environ["OPENAI_API_KEY"] = "ai-key"
-#keys redacted for now in repo
-client = ElevenLabs()
-llm = OpenAI(temperature=0.1)
-
-def record_environment():
-    """Capture live audio input"""
+def record_audio(filename, duration=5, fs=44100, channels=1):
+    """Records audio from the microphone and saves it as a WAV file."""
+    print(f"Recording audio for {duration} seconds...")
     try:
-        audio = sd.rec(int(RECORD_DURATION * SAMPLE_RATE),
-                      samplerate=SAMPLE_RATE,
-                      channels=1,
-                      dtype='float32')
+        recording = sd.rec(int(duration * fs), samplerate=fs, channels=channels)
         sd.wait()
-        return audio.flatten()
+        wavio.write(filename, recording, fs, sampwidth=2)
+        print(f"Recording saved to {filename}")
     except Exception as e:
-        print(f"Audio recording failed: {e}")
-        return None
-    
-def analyze_sounds(audio):
-    """Analyze audio using YAMNet classification"""
+        print(f"Recording error: {str(e)}")
+        raise
+
+def transcribe_audio(client, file_path):
+    """Sends the audio file to OpenAI for transcription."""
     try:
-        # convert to expected format
-        waveform = audio / np.max(np.abs(audio))  # Normalize
-        scores, embeddings, spectrogram = yamnet_model(waveform)
-        
-        # get top predictions
-        mean_scores = np.mean(scores, axis=0)
-        top_classes = np.argsort(mean_scores)[::-1][:3]
-        
-        detected = []
-        for class_idx in top_classes:
-            if mean_scores[class_idx] > 0.15:  # confidence threshold
-                detected.append(class_names[class_idx].split(',')[0])
-                
-        return detected if detected else ["No identifiable sounds"]
+        with open(file_path, "rb") as audio_file:
+            response = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="text"
+            )
+        return response
+    except APIConnectionError as e:
+        print(f"Connection error: {e.__cause__}")
+        raise
+    except APIError as e:
+        print(f"API error: {e}")
+        raise
     except Exception as e:
-        print(f"Sound analysis failed: {e}")
-        return ["Analysis error"]
-    
-def generate_guidance(sound_labels):
-    """Generate navigation advice using LLM"""
-    prompt_template = PromptTemplate.from_template(
-        """As a navigation assistant for the visually impaired, analyze these sound detections:
-        {sound_input}
-        
-        Provide:
-        1. Immediate directional advice
-        2. Clear movement instructions
-        3. Hazard warnings
-        
-        Format: 
-        - [Priority Level] [Direction] [Instruction] [Reason]"""
-    )
-    
-    safety_chain = LLMChain(llm=llm, prompt=prompt_template)
-    return safety_chain.invoke({"sound_input": ", ".join(sound_labels)})['text']
+        print(f"Transcription error: {str(e)}")
+        raise
 
-def speak_response(text):
-    """Convert text to speech"""
-    try: 
-        audio = client.text_to_speech.convert(
-            text=text,
-            voice_id="gOkFV1JMCt0G0n9xmBwV",
-            model_id="eleven_flash_v2",
-            output_format="mp3_44100_128"
-        )
-        play(audio)
+def main():
+    client = OpenAI(api_key="OPENAI_KEY")
+    
+    try:
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            temp_filename = tmp.name
+        print(f"Temporary file created: {temp_filename}")
+
+        # Record audio
+        record_audio(temp_filename, duration=5)
+        
+        # Verify the file exists and has content
+        if os.path.getsize(temp_filename) == 0:
+            raise ValueError("Recorded file is empty")
+            
+        # Transcribe audio
+        transcription = transcribe_audio(client, temp_filename)
+        
+        print("\nTranscription Result:")
+        print(transcription if transcription else "No transcription returned")
+        
     except Exception as e:
-        print(f"Voice synthesis failed: {e}")
+        print(f"Main error: {str(e)}")
+    finally:
+        # Clean up the temporary file
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
+            print(f"Temporary file {temp_filename} removed")
 
-def navigation_assistant():
-    """Main processing loop"""
-    print("Listening to environment...")
-    while True:
-        # 1. Capture audio
-        audio = record_environment()
-        if audio is None:
-            continue
-          # 2. Analyze sounds
-        sound_labels = analyze_sounds(audio)
-        print(f"Detected: {', '.join(sound_labels)}")
-        
-        # 3. Generate guidance
-        guidance = generate_guidance(sound_labels)
-        print(f"Guidance: {guidance}")
-        
-        # 4. Speak response
-        speak_response(guidance)
-        
-navigation_assistant()
+if __name__ == "__main__":
+    main()
+
+
+
