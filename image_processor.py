@@ -1,7 +1,6 @@
 from PIL import Image
 import io
 import base64
-import uuid
 from pillow_heif import open_heif
 
 

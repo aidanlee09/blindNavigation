@@ -3,8 +3,6 @@ import uuid
 import os
 from dotenv import load_dotenv
 import numpy as np
-from elevenlabs import play
-from elevenlabs.client import ElevenLabs
 from llm_converse import converse
 from image_processor import ImageProcessor
 import json

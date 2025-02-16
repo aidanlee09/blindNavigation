@@ -1,7 +1,5 @@
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
-import cv2
 import numpy as np
-
 
 def segment_anything(compressed_img):
     sam = sam_model_registry["vit_b"](checkpoint="checkpoints/sam_vit_b_01ec64.pth")

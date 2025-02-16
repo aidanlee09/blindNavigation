@@ -3,14 +3,11 @@ from elevenlabs.client import ElevenLabs
 from langchain.chains import LLMChain 
 from langchain_openai import OpenAI
 from langchain.prompts import PromptTemplate
-import openai
-import sounddevice as sd 
+import sounddevice as sd
 import numpy as np
-import tensorflow as tf
 import tensorflow_hub as hub
-from elevenlabs import play, save
-from scipy.io import wavfile
-import os 
+from elevenlabs import play
+import os
 load_dotenv()
 
 SAMPLE_RATE = 16000  # yAMNet requires 16kHz

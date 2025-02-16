@@ -1,6 +1,4 @@
-import cv2
 import torch
-import os
 import numpy as np
 from scipy import stats
 from depth_anything_v2.dpt import DepthAnythingV2
