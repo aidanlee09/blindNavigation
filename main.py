@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, Body, UploadFile, File
 import torch
 from query_manager import QueryManager
 
@@ -15,8 +15,8 @@ async def upload_image(file: UploadFile = File(...)):
 
 @app.post("/detect-image/")
 async def detect_image(image_id: str):
-    json = query_manager.default_ask(image_id)
-    return {"json": json}
+    response = query_manager.default_ask(image_id)
+    return {"description": response}
 
 @app.post("/detect-depth/")
 async def detect_depth(image_id: str):

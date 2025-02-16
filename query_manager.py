@@ -1,20 +1,39 @@
-import base64
-
 import torch
-import io
 import uuid
 import os
-from PIL import Image
-import pillow_heif
 from dotenv import load_dotenv
 import numpy as np
-from elevenlabs import Voice, VoiceSettings, play
+from elevenlabs import play
 from elevenlabs.client import ElevenLabs
 from llm_converse import converse
-import json
 from image_processor import ImageProcessor
+import json
+from depth import depth_calculation
 
 load_dotenv()
+
+
+def validate_json(json_data):
+    """Validates if JSON has the correct format"""
+    if not isinstance(json_data, dict):
+        return False, "JSON is not a dictionary"
+
+    # Required keys
+    expected_keys = {"obstacle", "description"}
+
+    # Check if all required keys are present
+    if set(json_data.keys()) != expected_keys:
+        return False, f"Missing or extra keys. Expected {expected_keys}, got {set(json_data.keys())}"
+
+    # Check if `obstacle` is either 0 or 1
+    if not isinstance(json_data["obstacle"], int) or json_data["obstacle"] not in [0, 1]:
+        return False, "Invalid 'obstacle' value. Must be 0 or 1"
+
+    # Check if `description` is a string
+    if not isinstance(json_data["description"], str):
+        return False, "Invalid 'description' value. Must be a string"
+
+    return True, "Valid"
 
 class QueryManager:
     def __init__(self, model):
@@ -22,6 +41,7 @@ class QueryManager:
         self.reset_memory()
         self.conversation_history = []  # Stores chat history
         self.image_history = {}         # Stores images as {image_id: PIL Image}
+        self.compressed_image_history = {} # Stores compressed images as {image_id: compressed image}
         self.depth_history = {}         # Stores depth recognition results
         self.sound_history = []         # Stores detected sounds
         self.gpt_history = {}           # Stores GPT responses
@@ -32,6 +52,7 @@ class QueryManager:
         """Clears all stored data in QueryManager."""
         self.conversation_history = []  # Reset chat history
         self.image_history = {}  # Reset stored images
+        self.compressed_image_history = {}  # Reset stored images
         self.depth_history = {}  # Reset depth recognition results
         self.sound_history = []  # Reset detected sounds
         self.gpt_history = {}  # Reset stored GPT responses
@@ -49,8 +70,9 @@ class QueryManager:
 
             # Store the optimized base64 image
             self.image_history[image_id] = processed_image["base64_image"]
+            self.compressed_image_history[image_id] = processed_image["compressed_image"]
 
-            return processed_image
+            return {"image_id": image_id}
 
         except Exception as e:
             return {"error": f"Failed to process image: {str(e)}"}
@@ -69,48 +91,29 @@ class QueryManager:
         with open(prompt_path, "r", encoding="utf-8") as file:
             prompt = file.read().strip()
 
-        json = converse(prompt, image, "gpt-4o")
-        return json
+        json_string = converse(prompt, image, "gpt-4o")
 
-    def detect_objects_and_estimate_depth(self, image_id):
-        """Processes an image to detect objects and estimate depth."""
-        if image_id not in self.image_history:
-            return {"error": "Image ID not found."}
+        if json_string.startswith("```json"):
+            json_string = json_string.replace("```json", "").strip()
+        if json_string.endswith("```"):
+            json_string = json_string.replace("```", "").strip()
 
-        image = self.image_history[image_id]
-        transform = torch.nn.Sequential(torch.nn.Upsample(size=(256, 256), mode="bilinear"))
-        img_tensor = transform(torch.tensor(np.array(image)).unsqueeze(0).float()).to(self.device)
+        print(f"Received JSON string: {json_string}")
 
-        # Run depth recognition model
-        with torch.no_grad():
-            depth_map = self.model(img_tensor)
+        data = json.loads(json_string)
 
-        depth_data = depth_map.squeeze().cpu().numpy().tolist()
-        self.depth_history[image_id] = depth_data
+        check, msg = validate_json(data)
+        if not check:
+            raise ValueError(f"Invalid JSON format: {msg}")
 
-        return {"depth_map": depth_data}
+        return data['description']
+
+        if data['obstacle'] == 0:
+            return data['description']
+
+        if data['obstacle'] == 1:
+            compressed_image = self.compressed_image_history[image_id]
+            image = np.array(compressed_image)
+            distance_to_obstacle = depth_calculation(image)
 
 
-    def text_to_speech(self, text):
-        """Converts GPT's response into speech using ElevenLabs."""
-        print("🔊 Generating speech...")
-        api_key = os.getenv("ELEVENLABS_API_KEY")
-        if not api_key:
-            print("Error: ElevenLabs API key not found. Check your .env file.")
-            return
-
-        client = ElevenLabs(api_key=api_key)
-        try:
-            # Convert text to speech
-            audio = client.text_to_speech.convert(
-                text=text,  # Fix: Use 'text' instead of 'input_text'
-                voice_id="gOkFV1JMCt0G0n9xmBwV",  # Replace with a valid voice ID
-                model_id="eleven_monolingual_v1",
-                output_format="mp3_44100_128"
-            )
-
-            # Play the generated speech
-            play(audio)
-
-        except Exception as e:
-            print(f"❌ Voice synthesis failed: {e}")

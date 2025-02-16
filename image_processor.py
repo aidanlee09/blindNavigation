@@ -71,6 +71,7 @@ class ImageProcessor:
                 "image_id": image_id,
                 "original_format": content_type,
                 "converted_format": image_format,
+                "compressed_image": compressed_image,
                 "base64_image": base64_image
             }
 
