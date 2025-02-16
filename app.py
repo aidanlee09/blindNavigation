@@ -10,7 +10,7 @@ from starlette.responses import Response
 # # Initialize Firebase Admin SDK
 cred = credentials.Certificate("blind-navigation-8fbmw1-firebase-adminsdk-fbsvc-92f43ecbbb.json")
 if not firebase_admin._apps:
-    firebase_admin.initialize_app(cred, {"storageBucket": "blind-navigation-8fbmw1.appspot.com"})
+    firebase_admin.initialize_app(cred, {"storageBucket": "gs://blind-navigation-8fbmw1.firebasestorage.app"})
 
 
 def get_storage_bucket():
