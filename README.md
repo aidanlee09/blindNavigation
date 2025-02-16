@@ -1,3 +1,13 @@
+---
+title: "Blind Navigation"
+emoji: 🏃‍♂️
+colorFrom: deep-purple
+colorTo: indigo
+sdk: docker
+app_file: Dockerfile
+pinned: false
+---
+
 # blindNavigation
 
 ## Backend
