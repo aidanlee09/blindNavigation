@@ -7,6 +7,9 @@ app = FastAPI()
 depth_model = torch.hub.load("intel-isl/MiDaS", "MiDaS_small")
 query_manager = QueryManager(depth_model)
 
+@app.post("/test/")
+async def test(testing: str):
+    return testing
 @app.post("/upload-image/")
 async def upload_image(file: UploadFile = File(...)):
     file_bytes = await file.read()
