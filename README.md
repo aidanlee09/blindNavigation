@@ -1,7 +1,7 @@
 ---
 title: "Blind Navigation"
 emoji: 🏃‍♂️
-colorFrom: deep-purple
+colorFrom: purple
 colorTo: indigo
 sdk: docker
 app_file: Dockerfile
