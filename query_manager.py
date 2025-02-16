@@ -34,7 +34,7 @@ def validate_json(json_data):
     return True, "Valid"
 
 class QueryManager:
-    def __init__(self, model):
+    def __init__(self):
         self.image_processor = ImageProcessor()
         self.reset_memory()
         self.conversation_history = []  # Stores chat history
@@ -43,7 +43,6 @@ class QueryManager:
         self.depth_history = {}         # Stores depth recognition results
         self.sound_history = []         # Stores detected sounds
         self.gpt_history = {}           # Stores GPT responses
-        self.model = model              # PyTorch depth recognition model
         self.device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
     def reset_memory(self):

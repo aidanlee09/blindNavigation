@@ -20,4 +20,5 @@ gradio==4.29.0
 matplotlib
 opencv-python
 torchvision
-langchain_community
+langchain-community
+

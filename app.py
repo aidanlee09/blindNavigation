@@ -4,8 +4,7 @@ from query_manager import QueryManager
 
 app = FastAPI()
 
-depth_model = torch.hub.load("intel-isl/MiDaS", "MiDaS_small")
-query_manager = QueryManager(depth_model)
+query_manager = QueryManager()
 
 @app.post("/test/")
 async def test(testing: str):
@@ -20,11 +19,6 @@ async def upload_image(file: UploadFile = File(...)):
 async def detect_image(image_id: str):
     response = query_manager.default_ask(image_id)
     return {"description": response}
-
-@app.post("/detect-depth/")
-async def detect_depth(image_id: str):
-    depth_result = query_manager.detect_objects_and_estimate_depth(image_id)
-    return depth_result
 
 # @app.post("/follow-up/")
 # async def follow_up(question: str):
