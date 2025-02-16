@@ -1,6 +1,11 @@
 # Use official Python image
 FROM python:3.11
 
+# Install OpenGL and other necessary libraries
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0
+
 # Set working directory
 WORKDIR /app
 
